@@ -1,0 +1,137 @@
+﻿@page
+@model IndexModel
+@{
+    ViewData["Title"] = "Project MARS Scan";
+}
+
+<div class="text-center">
+    <h1>NASA Command Center</h1>
+</div>
+
+<div id="game">
+    <div class="control-panel">        
+            <a asp-page-handler="StartFirstMission" id="ctrl_1" class="ctrl-button">Discovery Mission</a>
+            <a asp-page-handler="DeployRovers" id="ctrl_2" class="ctrl-button">Deploy Scanner Rovers</a>
+            <a href="#" class="ctrl-button" id="ctrl_3" onclick="document.getElementById('btnDeployManualRover').click()">Deploy Extra Rover</a>      
+    </div>      
+    
+    <div class="add-rover-label">
+        <form asp-page-handler="deploy" method="post">
+            <div>
+                <label>Starting Location:</label>
+                <input type="number" id="startX" placeholder="0" asp-for="RoverToDeploy.X"  value="0" min="0" max="10">
+                <input type="number" id="startY" placeholder="0" asp-for="RoverToDeploy.Y"  value="0" min="0" max="10">
+                <select id="startDir" asp-for="RoverToDeploy.Direction">
+                    <option value="">Choose Initial Direction</option>
+                    <option value="78">North</option>
+                    <option value="83">South</option>
+                    <option value="69">East</option>
+                    <option value="87">West</option>
+            </select>
+            </div>
+            <div>
+                <label for="mission">Mission</label>
+                <input type="text" id="mission" asp-for="RoverToDeploy.MissionAsText" maxLength="30" minLength="1" value="M" onkeydown="return /[MLR]/i.test(event.key)"
+                    data-val-required="The mission is required."/>
+            </div>
+            <input id="btnDeployManualRover" type="submit" value="Deploy Manual Rover" style="visibility:hidden">            
+        </form>
+    </div>
+        
+    <div class="map-and-summary">
+        <canvas id="world"></canvas>
+    
+        <div class="rovers-summary">
+            <h3>ROVERS</h3>
+            <ul>
+                @foreach (var rover in Model.Rovers)
+                {
+                    <li class="rover-label">
+                        <span>@rover.Description</span>
+                    </li>
+                }
+            </ul>
+        </div>
+    </div>
+
+    <div class="info-panel">
+        @*<span class="info_status_bar">Rovers: </span>
+        <span id="info_generation">0</span>
+
+        <span class="separator">|</span>*@
+
+        <span class="info_status_bar">Status: </span>
+        <span id="info_status">@Model.State</span>
+
+        <span class="separator">|</span>
+
+        <span class="info_status_bar">Mission: </span>
+        <span id="info_status">@Model.CurrentRoverMission?.MissionAsText</span>
+
+        <span class="separator">|</span>
+
+        <span class="info_status_bar">Error: </span>
+        <span id="info_error" class="info_error">@Model.Error</span>
+    </div>
+
+    <!--invisible elements to trigger handler methods on the server-->
+    <div>
+        <a id="missionFinished" asp-page-handler="MissionFinished" style="visibility:hidden"/>
+        @*<a id="missionFinished" asp-page-handler="MissionFinished" asp-route-x="0" asp-route-y="0" style="visibility:hidden"/>*@
+        @Html.Hidden("FinalX", Model.FinalX)
+        @Html.Hidden("FinalY", Model.FinalY)
+    </div>
+</div>
+
+<script src="~/js/rover.js"></script>
+<script src="~/js/signalr/dist/browser/signalr.js"></script>
+
+<script type="text/javascript">
+    function degToRad(d) {
+        // Converts degrees to radians  
+        return d * 0.01745;
+    }    
+
+    function startMission() {
+        console.log("startMission");
+
+        @if (@Model.CurrentRoverMission == null)
+        {
+            return;
+        }        
+
+        const roverW = 20;
+        const roverH = 35;
+        const gridSizeX = 50;
+        const gridSizeY = 40;
+
+        //recalculate the grid coordinates to actual canvas coordinates
+        let mapStartX = @Model.CurrentRoverMission.X * gridSizeX;
+        let mapStartY = c.height - @Model.CurrentRoverMission.Y * gridSizeY;
+        
+        console.log(`start mission: [${mapStartX}, ${mapStartY}], Direction: ${'@Model.CurrentRoverMission.DirectionAsChar'}`);
+
+        let mission = new RoverMission(mapStartX, mapStartY, '@Model.CurrentRoverMission.DirectionAsChar', "@Model.CurrentRoverMission.MissionAsText");
+        let ctx = c.getContext('2d');
+        let animation = new RoverAnimation(mission, ctx);
+        animation.runRover();
+    }
+
+    function onMissionFinished(x, y) {
+        console.debug(`Mission Finished: State:${'@Model.State'} [${x},{y}]`);
+        
+        document.getElementById('FinalX').value = x;
+        document.getElementById('FinalY').value = y;
+
+        let ex =  document.getElementById('FinalX');
+        let ey =  document.getElementById('FinalY');
+        console.info(ex.value + ' ' + ey.value);
+
+
+        let triggerElement = document.getElementById('missionFinished');
+        //triggerElement.setAttribute("asp-route-x", x);
+        //triggerElement.setAttribute("asp-route-y", y);
+        triggerElement.click();        
+    }    
+  
+</script>
